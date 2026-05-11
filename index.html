@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BorneSmart</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--vert:#00E5A0;--bleu:#0A0F1E;--bleu2:#0F1628;--bleu3:#151D35;--bleu4:#1C2640;--orange:#FF6B35;--rouge:#FF3B5C;--blanc:#F0F4FF;--gris:#8892A4;--card:rgba(21,29,53,0.95);--border:rgba(0,229,160,0.15);--ft:'Syne',sans-serif;--fm:'Space Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bleu);color:var(--blanc);font-family:var(--ft);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 60% 40% at 15% 20%,rgba(0,229,160,.08) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 85% 80%,rgba(255,107,53,.05) 0%,transparent 60%);pointer-events:none}
+.page{display:none;min-height:100vh;position:relative;z-index:1}
+.page.active{display:flex;flex-direction:column}
+#page-accueil{align-items:center;justify-content:center;padding:2rem}
+.box{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:3rem 2.5rem;width:100%;max-width:400px;backdrop-filter:blur(20px);box-shadow:0 40px 80px rgba(0,0,0,.5);animation:fu .5s ease}
+@keyframes fu{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.logo{display:flex;align-items:center;gap:12px;margin-bottom:2.5rem;justify-content:center}
+.logo-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--vert),#00B37D);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.logo-text{font-size:1.8rem;font-weight:800;letter-spacing:-.5px}
+.logo-text span{color:var(--vert)}
+.acc-title{text-align:center;font-size:1.1rem;font-weight:700;margin-bottom:.4rem}
+.acc-sub{text-align:center;color:var(--gris);font-size:.85rem;margin-bottom:2rem;line-height:1.5}
+.tel-wrap{display:flex;background:var(--bleu3);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:1.2rem;transition:border-color .2s}
+.tel-wrap:focus-within{border-color:var(--vert);box-shadow:0 0 0 3px rgba(0,229,160,.1)}
+.tel-prefix{padding:14px 14px 14px 16px;font-family:var(--fm);font-size:.95rem;color:var(--vert);font-weight:700;border-right:1px solid var(--border);background:rgba(0,229,160,.06);white-space:nowrap}
+.tel-wrap input{flex:1;background:transparent;border:none;outline:none;padding:14px 16px;color:var(--blanc);font-family:var(--fm);font-size:.95rem;letter-spacing:.05em}
+.tel-wrap input::placeholder{color:var(--gris)}
+.btn-go{width:100%;background:linear-gradient(135deg,var(--vert),#00C988);border:none;border-radius:12px;padding:15px;color:var(--bleu);font-family:var(--ft);font-weight:800;font-size:1rem;cursor:pointer;transition:all .2s}
+.btn-go:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,229,160,.4)}
+.wa-note{display:flex;align-items:flex-start;gap:10px;margin-top:1.5rem;padding:12px 14px;background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.15);border-radius:10px;font-size:.78rem;color:var(--gris);line-height:1.5}
+#page-app{flex-direction:row}
+.sidebar{width:230px;min-height:100vh;background:var(--bleu2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.5rem 1rem;flex-shrink:0}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 .5rem 1.5rem;border-bottom:1px solid var(--border);margin-bottom:1.2rem}
+.sb-logo .logo-icon{width:36px;height:36px;font-size:17px;border-radius:10px}
+.sb-logo .logo-text{font-size:1.15rem}
+.nav-sec{font-size:.67rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.12em;padding:0 .75rem;margin:.5rem 0 .4rem}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600;font-size:.87rem;color:var(--gris);transition:all .2s;border:none;background:transparent;width:100%;text-align:left}
+.nav-item:hover{background:var(--bleu3);color:var(--blanc)}
+.nav-item.active{background:rgba(0,229,160,.12);color:var(--vert)}
+.nav-item .ic{font-size:1.05rem;width:20px;text-align:center}
+.sb-bot{margin-top:auto;padding-top:1rem;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--bleu3);margin-bottom:.75rem}
+.u-av{width:34px;height:34px;background:linear-gradient(135deg,var(--vert),#00B37D);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--bleu);flex-shrink:0;font-family:var(--fm)}
+.u-num{font-family:var(--fm);font-size:.78rem;font-weight:700}
+.u-role{font-size:.7rem;color:var(--gris)}
+.mqtt-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:var(--bleu3);font-size:.73rem;font-family:var(--fm);margin-bottom:.75rem}
+.mdot{width:8px;height:8px;border-radius:50%;background:var(--rouge);animation:pulse 2s infinite;flex-shrink:0}
+.mdot.on{background:var(--vert)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-quit{display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.2);border-radius:10px;padding:10px 12px;color:var(--rouge);font-family:var(--ft);font-weight:600;font-size:.84rem;cursor:pointer;transition:all .2s}
+.btn-quit:hover{background:rgba(255,59,92,.2)}
+.main{flex:1;overflow-y:auto;padding:2rem}
+.section{display:none}
+.section.active{display:block}
+.sh{margin-bottom:1.8rem}
+.st{font-size:1.75rem;font-weight:800;letter-spacing:-.5px}
+.st span{color:var(--vert)}
+.ss{color:var(--gris);font-size:.87rem;margin-top:4px}
+.row-b{display:flex;gap:1rem;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap}
+.eb{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.eb.libre{background:rgba(0,229,160,.1);color:var(--vert);border:1px solid rgba(0,229,160,.3)}
+.eb.charge{background:rgba(255,107,53,.1);color:var(--orange);border:1px solid rgba(255,107,53,.3)}
+.eb.termine{background:rgba(0,229,160,.1);color:var(--vert);border:1px solid rgba(0,229,160,.3)}
+.eb.surchauffe{background:rgba(255,59,92,.15);color:var(--rouge);border:1px solid var(--rouge)}
+.eb.attente{background:rgba(136,146,164,.1);color:var(--gris);border:1px solid rgba(136,146,164,.3)}
+.edot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.5s infinite}
+.sb2{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:.77rem;font-weight:600}
+.sb2.r{background:rgba(0,229,160,.08);color:var(--vert)}
+.sb2.s{background:rgba(255,215,0,.1);color:#FFD700}
+.upd{margin-left:auto;font-family:var(--fm);font-size:.73rem;color:var(--gris)}
+.timer-card{background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,229,160,.03));border:1px solid rgba(0,229,160,.25);border-radius:16px;padding:1.2rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
+.timer-icon{font-size:2rem}
+.timer-body{flex:1}
+.timer-label{font-size:.72rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.timer-val{font-family:var(--fm);font-size:2rem;font-weight:700;color:var(--vert);letter-spacing:.05em}
+.timer-sub{font-size:.78rem;color:var(--gris);margin-top:2px}
+.timer-card.hidden{display:none}
+.surchauffe-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:998;background:linear-gradient(90deg,#FF3B5C,#FF6B35);padding:14px 2rem;align-items:center;gap:1rem;animation:slideDown .4s ease}
+.surchauffe-banner.show{display:flex}
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+.sb-warn-icon{font-size:1.5rem;animation:shake .5s infinite}
+@keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.sb-warn-text{flex:1;font-weight:700;font-size:.95rem;color:#fff}
+.sb-warn-sub{font-size:.8rem;font-weight:400;opacity:.85}
+.sb-warn-temp{font-family:var(--fm);font-size:1.3rem;font-weight:700;color:#fff;background:rgba(0,0,0,.2);padding:6px 14px;border-radius:8px}
+.bat-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2rem;margin-bottom:1.5rem;display:flex;gap:2.5rem;align-items:center;flex-wrap:wrap}
+.bat-vis{position:relative;width:150px;height:80px;flex-shrink:0}
+.bat-body{width:128px;height:64px;border:3px solid var(--vert);border-radius:12px;position:absolute;top:8px;left:0;overflow:hidden}
+.bat-fill{height:100%;background:linear-gradient(90deg,var(--vert),#00C988);transition:width 1.2s ease;border-radius:9px}
+.bat-tip{width:9px;height:28px;background:var(--vert);border-radius:0 5px 5px 0;position:absolute;top:calc(50% - 14px + 8px);left:128px}
+.bat-ov{position:absolute;top:8px;left:0;width:128px;height:64px;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:1rem;font-weight:700;color:var(--bleu);mix-blend-mode:difference}
+.bat-info{flex:1;min-width:200px}
+.bat-big{font-family:var(--fm);font-size:3.8rem;font-weight:700;color:var(--vert);line-height:1}
+.bat-big sup{font-size:1.4rem;color:var(--gris)}
+.bat-met{display:flex;gap:1.8rem;margin-top:1.2rem;flex-wrap:wrap}
+.mi .ml{font-size:.7rem;color:var(--gris);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.mi .mv{font-family:var(--fm);font-size:1.15rem;font-weight:700;margin-top:3px}
+.mi .mu{font-size:.68rem;color:var(--gris);margin-left:3px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1.1rem;margin-bottom:1.5rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--vert),transparent)}
+.ci{font-size:1.7rem;margin-bottom:.9rem}
+.cv{font-family:var(--fm);font-size:1.9rem;font-weight:700;color:var(--vert);line-height:1}
+.cu{font-family:var(--fm);font-size:.8rem;color:var(--gris);margin-left:3px}
+.cl{font-size:.75rem;color:var(--gris);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+.chart-title{font-size:.82rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+canvas#chart{width:100%;height:110px;display:block}
+.hist-wrap{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.ht{width:100%;border-collapse:collapse}
+.ht th{text-align:left;padding:12px 16px;font-size:.7rem;font-weight:700;color:var(--gris);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2)}
+.ht td{padding:13px 16px;font-size:.85rem;font-family:var(--fm);border-bottom:1px solid rgba(255,255,255,.03)}
+.ht tr:last-child td{border-bottom:none}
+.ht tr:hover td{background:rgba(255,255,255,.02)}
+.bs{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600}
+.bs.r{background:rgba(0,229,160,.1);color:var(--vert)}
+.bs.s{background:rgba(255,215,0,.1);color:#FFD700}
+.tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-bottom:1.5rem}
+.tc{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:2rem;text-align:center;position:relative;overflow:hidden}
+.tc::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.tc.reseau::before{background:linear-gradient(90deg,var(--vert),#00C988)}
+.tc.solaire::before{background:linear-gradient(90deg,#FFD700,#FFA500)}
+.ti{font-size:3rem;margin-bottom:1rem}
+.tn{font-size:1rem;font-weight:700;margin-bottom:.75rem}
+.tp{font-family:var(--fm);font-size:2.8rem;font-weight:700;color:var(--vert);line-height:1}
+.tp.g{color:#FFD700;font-size:2rem}
+.tu{font-size:.78rem;color:var(--gris);margin-top:4px}
+.td2{font-size:.82rem;color:var(--gris);margin-top:1rem;line-height:1.6}
+.fc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem}
+.fc h3{font-size:.88rem;margin-bottom:1rem}
+.fc code{display:block;font-family:var(--fm);font-size:.82rem;color:var(--gris);line-height:2.2;background:var(--bleu3);padding:1rem 1.2rem;border-radius:10px}
+.fc code .hl{color:var(--vert)}
+.wa-cfg{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;margin-bottom:1.5rem}
+.wa-h{display:flex;align-items:center;gap:12px;margin-bottom:1.2rem}
+.wa-ic{width:44px;height:44px;background:#25D366;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.wa-t{font-weight:700;font-size:1rem}
+.wa-s{font-size:.78rem;color:var(--gris)}
+.wa-nd{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bleu3);border:1px solid var(--border);border-radius:12px;font-family:var(--fm);font-size:1rem}
+.wa-num{color:var(--vert);font-weight:700;flex:1}
+.btn-ed{background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--gris);font-size:.75rem;cursor:pointer;transition:all .2s}
+.btn-ed:hover{color:var(--blanc);border-color:var(--vert)}
+.wa-nb{display:flex;gap:10px;align-items:flex-start;margin-top:1rem;padding:12px 14px;background:rgba(37,211,102,.06);border:1px solid rgba(37,211,102,.15);border-radius:10px;font-size:.78rem;color:var(--gris);line-height:1.6}
+.nl{display:flex;flex-direction:column;gap:1rem}
+.ni{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.5rem;display:flex;align-items:center;gap:1rem}
+.ni-ic{font-size:1.8rem;flex-shrink:0}
+.ni-b{flex:1}
+.ni-t{font-weight:700;font-size:.9rem;margin-bottom:3px}
+.ni-x{font-size:.8rem;color:var(--gris);font-family:var(--fm)}
+.ni-tm{font-family:var(--fm);font-size:.72rem;color:var(--gris)}
+.no-n{color:var(--gris);font-size:.88rem;padding:1rem 0}
+.toast{position:fixed;bottom:2rem;right:2rem;background:var(--bleu3);border:1px solid var(--border);border-radius:12px;padding:1rem 1.5rem;display:flex;align-items:center;gap:12px;font-size:.87rem;font-weight:600;z-index:999;transform:translateY(100px);opacity:0;transition:all .3s ease;max-width:300px;box-shadow:0 20px 40px rgba(0,0,0,.4)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:rgba(0,229,160,.4)}
+.toast.error{border-color:rgba(255,59,92,.4)}
+@media(max-width:768px){#page-app{flex-direction:column}.sidebar{width:100%;min-height:auto;padding:1rem}.sb-bot{display:none}.main{padding:1rem}.bat-card{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div class="surchauffe-banner" id="surchauffe-banner">
+  <div class="sb-warn-icon">🔥</div>
+  <div class="sb-warn-text">
+    SURCHAUFFE DÉTECTÉE — Charge coupée automatiquement
+    <div class="sb-warn-sub">La borne s'est arrêtée par sécurité. Attendez que la température redescende.</div>
+  </div>
+  <div class="sb-warn-temp" id="banner-temp">—°C</div>
+</div>
+
+<div id="page-accueil" class="page active">
+  <div class="box">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Borne<span>Smart</span></div>
+    </div>
+    <div class="acc-title">Surveillance de votre borne</div>
+    <div class="acc-sub">Entrez votre numéro WhatsApp pour accéder au tableau de bord et recevoir une alerte quand votre véhicule est chargé.</div>
+    <div class="tel-wrap">
+      <div class="tel-prefix">📱 +212</div>
+      <input type="tel" id="inp-tel" placeholder="6XX XXX XXX" maxlength="12" onkeydown="if(event.key==='Enter')entrer()">
+    </div>
+    <button class="btn-go" onclick="entrer()">Accéder à ma borne →</button>
+    <div class="wa-note">
+      <span>💬</span>
+      <span>Vous recevrez un message WhatsApp automatique dès que votre véhicule est complètement chargé.</span>
+    </div>
+  </div>
+</div>
+
+<div id="page-app" class="page">
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text">Borne<span style="color:var(--vert)">Smart</span></div>
+    </div>
+    <div class="nav-sec">Navigation</div>
+    <button class="nav-item active" onclick="showSec('borne',this)"><span class="ic">🔋</span>Ma Borne</button>
+    <button class="nav-item" onclick="showSec('historique',this)"><span class="ic">📋</span>Historique</button>
+    <button class="nav-item" onclick="showSec('tarifs',this)"><span class="ic">💰</span>Tarifs</button>
+    <button class="nav-item" onclick="showSec('notifications',this)"><span class="ic">🔔</span>Notifications</button>
+    <div class="sb-bot">
+      <div class="user-chip">
+        <div class="u-av" id="s-av">06</div>
+        <div><div class="u-num" id="s-num">—</div><div class="u-role">Propriétaire</div></div>
+      </div>
+      <div class="mqtt-pill">
+        <div class="mdot" id="mdot"></div>
+        <span id="mlbl" style="color:var(--gris)">Déconnecté</span>
+      </div>
+      <button class="btn-quit" onclick="quitter()">← Quitter</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div id="section-borne" class="section active">
+      <div class="sh"><div class="st">Ma <span>Borne</span></div><div class="ss">Données en temps réel de votre installation</div></div>
+      <div class="row-b">
+        <div class="eb attente" id="eb"><div class="edot"></div><span id="etxt">En attente</span></div>
+        <div class="sb2 r" id="sbadge">⚡ <span id="stxt">Réseau</span></div>
+        <div class="upd">Mis à jour : <span id="lupd">—</span></div>
+      </div>
+      <div class="timer-card hidden" id="timer-card">
+        <div class="timer-icon">⏱️</div>
+        <div class="timer-body">
+          <div class="timer-label">Durée de charge en cours</div>
+          <div class="timer-val" id="timer-val">00:00:00</div>
+          <div class="timer-sub">Démarré à <span id="timer-start">—</span></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.72rem;color:var(--gris);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Temps restant estimé</div>
+          <div style="font-family:var(--fm);font-size:1.4rem;font-weight:700;color:var(--orange)" id="timer-reste">—</div>
+        </div>
+      </div>
+      <div class="bat-card">
+        <div class="bat-vis">
+          <div class="bat-body"><div class="bat-fill" id="bfill" style="width:0%"></div></div>
+          <div class="bat-tip"></div>
+          <div class="bat-ov" id="bov">0%</div>
+        </div>
+        <div class="bat-info">
+          <div class="bat-big" id="bbig">0<sup>%</sup></div>
+          <div style="font-size:.78rem;color:var(--gris);margin-top:4px">Niveau de charge batterie</div>
+          <div class="bat-met">
+            <div class="mi"><div class="ml">Courant</div><div class="mv" id="mc">—<span class="mu">A</span></div></div>
+            <div class="mi"><div class="ml">Température</div><div class="mv" id="mt">—<span class="mu">°C</span></div></div>
+            <div class="mi"><div class="ml">Énergie</div><div class="mv" id="me">—<span class="mu">kWh</span></div></div>
+            <div class="mi"><div class="ml">Prix</div><div class="mv" id="mp">—<span class="mu">MAD</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="cards-grid">
+        <div class="card"><div class="ci">⚡</div><div><span class="cv" id="cc">—</span><span class="cu">A</span></div><div class="cl">Courant</div></div>
+        <div class="card"><div class="ci">🌡️</div><div><span class="cv" id="ct">—</span><span class="cu">°C</span></div><div class="cl">Température</div></div>
+        <div class="card"><div class="ci">⚙️</div><div><span class="cv" id="ce">—</span><span class="cu">kWh</span></div><div class="cl">Énergie</div></div>
+        <div class="card"><div class="ci">💴</div><div><span class="cv" id="cp">—</span><span class="cu">MAD</span></div><div class="cl">Prix total</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 Courant en temps réel (A)</div>
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <div id="section-historique" class="section">
+      <div class="sh"><div class="st"><span>Historique</span> des recharges</div><div class="ss">Vos sessions passées</div></div>
+      <div class="hist-wrap">
+        <table class="ht">
+          <thead><tr><th>Date &amp; Heure</th><th>Énergie</th><th>Batterie finale</th><th>Source</th><th>Prix</th></tr></thead>
+          <tbody id="hbody"><tr><td colspan="5" style="text-align:center;color:var(--gris);padding:2rem">Aucune recharge enregistrée</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="section-tarifs" class="section">
+      <div class="sh"><div class="st">Nos <span>Tarifs</span></div><div class="ss">Transparents et sans surprise</div></div>
+      <div class="tg">
+        <div class="tc reseau"><div class="ti">⚡</div><div class="tn">Source Réseau</div><div class="tp">1.50</div><div class="tu">MAD par kWh consommé</div><div class="td2">Alimentation depuis le réseau électrique national. Disponible 24h/24. Facturation basée sur la consommation réelle mesurée par le capteur ACS712.</div></div>
+        <div class="tc solaire"><div class="ti">☀️</div><div class="tn">Source Solaire</div><div class="tp g">GRATUIT</div><div class="tu">0 MAD — énergie verte</div><div class="td2">Recharge 100% gratuite grâce à l'énergie solaire. Disponible selon les conditions météo. Contribuez à la transition énergétique.</div></div>
+      </div>
+
+    </div>
+
+    <div id="section-notifications" class="section">
+      <div class="sh"><div class="st"><span>Notifications</span> WhatsApp</div><div class="ss">Alerte automatique à la fin de chaque recharge</div></div>
+      <div class="wa-cfg">
+        <div class="wa-h"><div class="wa-ic">📱</div><div><div class="wa-t">Votre numéro WhatsApp</div><div class="wa-s">Un message vous sera envoyé automatiquement</div></div></div>
+        <div class="wa-nd"><span>+212</span><span class="wa-num" id="wnd">—</span><button class="btn-ed" onclick="modifier()">✏️ Modifier</button></div>
+        <div class="wa-nb"><span>💬</span><span>Pour activer CallMeBot, envoyez ce message au <strong style="color:var(--blanc)">+34 644 59 78 17</strong> sur WhatsApp : <em>"I allow callmebot to send me messages"</em></span></div>
+      </div>
+      <div class="ss" style="margin-bottom:1rem">Alertes envoyées</div>
+      <div class="nl" id="nlist"><div class="no-n">Aucune notification pour l'instant.</div></div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"><span id="tic">✓</span><span id="tmsg">—</span></div>
+
+<script>
+const CFG={host:'1338876118204e9e8f0682d6c3acf871.s1.eu.hivemq.cloud',port:8884,user:'TAYFOUR',pass:'Tayfour123',topic:'borne/001/telemetrie',cid:'bs_'+Math.random().toString(16).substr(2,8)};
+let S={tel:localStorage.getItem('bs_tel')||'',hist:JSON.parse(localStorage.getItem('bs_hist')||'[]'),mc:null,lastE:-1,cd:new Array(30).fill(0),timerInterval:null,chargeStart:null};
+
+if(S.tel) document.getElementById('inp-tel').value=S.tel.replace('+212','');
+
+function entrer(){
+  const r=document.getElementById('inp-tel').value.trim().replace(/\s/g,'');
+  if(!r||r.length<8){toast('Entrez un numéro valide','error');return;}
+  S.tel='+212'+r;localStorage.setItem('bs_tel',S.tel);demarrer();
+}
+
+function demarrer(){
+  document.getElementById('page-accueil').classList.remove('active');
+  document.getElementById('page-app').classList.add('active');
+  document.getElementById('s-num').textContent=S.tel;
+  document.getElementById('wnd').textContent=S.tel.replace('+212','');
+  affHist();initChart();connectMQTT();
+  toast('Bienvenue ! Connexion en cours…','success');
+}
+
+function connectMQTT(){
+  try{
+    S.mc=mqtt.connect(`wss://${CFG.host}:${CFG.port}/mqtt`,{clientId:CFG.cid,username:CFG.user,password:CFG.pass,clean:true,reconnectPeriod:3000});
+    S.mc.on('connect',()=>{document.getElementById('mdot').classList.add('on');document.getElementById('mlbl').textContent='Connecté';document.getElementById('mlbl').style.color='var(--vert)';S.mc.subscribe(CFG.topic);});
+    S.mc.on('offline',()=>{document.getElementById('mdot').classList.remove('on');document.getElementById('mlbl').textContent='Déconnecté';document.getElementById('mlbl').style.color='var(--gris)';});
+    S.mc.on('message',(t,m)=>{try{maj(JSON.parse(m.toString()));}catch(e){}});
+  }catch(e){demo();}
+}
+
+const EC=['libre','attente','attente','charge','termine','surchauffe'];
+const EF=['Borne libre','En attente','Choix source','En charge','Terminé ✓','Surchauffe !'];
+
+function maj(d){
+  const bat=d.bat??0,I=d.courant??0,T=d.temp??0,E=d.energie??0,P=d.prix??0,et=d.etat??0,src=d.source??0;
+  document.getElementById('bfill').style.width=bat+'%';
+  document.getElementById('bov').textContent=bat+'%';
+  document.getElementById('bbig').innerHTML=bat+'<sup>%</sup>';
+  sm('mc',I.toFixed(1),'A');sm('mt',T.toFixed(1),'°C');sm('me',E.toFixed(3),'kWh');sm('mp',P.toFixed(2),'MAD');
+  document.getElementById('cc').textContent=I.toFixed(1);
+  document.getElementById('ct').textContent=T.toFixed(1);
+  document.getElementById('ce').textContent=E.toFixed(3);
+  document.getElementById('cp').textContent=P.toFixed(2);
+  const eb=document.getElementById('eb');eb.className='eb '+(EC[et]||'attente');document.getElementById('etxt').textContent=EF[et]||'—';
+  const sb=document.getElementById('sbadge');sb.className='sb2 '+(src===1?'s':'r');document.getElementById('stxt').textContent=src===1?'Solaire ☀️':'Réseau ⚡';
+  document.getElementById('lupd').textContent=new Date().toLocaleTimeString('fr-FR');
+  S.cd.push(I);if(S.cd.length>30)S.cd.shift();drawChart();
+  // ── Timer charge ──
+  if(et===3 && S.lastE!==3){
+    // Démarrage charge
+    S.chargeStart=new Date();
+    document.getElementById('timer-start').textContent=S.chargeStart.toLocaleTimeString('fr-FR');
+    document.getElementById('timer-card').classList.remove('hidden');
+    if(S.timerInterval)clearInterval(S.timerInterval);
+    S.timerInterval=setInterval(()=>{
+      if(!S.chargeStart)return;
+      const sec=Math.floor((Date.now()-S.chargeStart)/1000);
+      const h=String(Math.floor(sec/3600)).padStart(2,'0');
+      const m=String(Math.floor((sec%3600)/60)).padStart(2,'0');
+      const s=String(sec%60).padStart(2,'0');
+      document.getElementById('timer-val').textContent=`${h}:${m}:${s}`;
+    },1000);
+  }
+  if(et!==3 && S.lastE===3){
+    // Fin charge
+    if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
+    document.getElementById('timer-card').classList.add('hidden');
+    S.chargeStart=null;
+  }
+  // Temps restant estimé
+  if(et===3 && bat<100){
+    const vitesse=(bat-20)/Math.max((Date.now()-(S.chargeStart||Date.now()))/60000,1);
+    const resteMin=vitesse>0?Math.round((100-bat)/vitesse):null;
+    document.getElementById('timer-reste').textContent=resteMin?`~${resteMin} min`:'Calcul...';
+  }
+
+  // ── Alerte surchauffe ──
+  const banner=document.getElementById('surchauffe-banner');
+  if(et===5){
+    banner.classList.add('show');
+    document.getElementById('banner-temp').textContent=T.toFixed(1)+'°C';
+    sendWA_surchauffe(T);
+  } else {
+    banner.classList.remove('show');
+  }
+
+  if(et===4&&S.lastE!==4){saveSession(bat,E,P,src);sendWA(bat,E,P,src);}
+  S.lastE=et;
+}
+
+function sm(id,v,u){document.getElementById(id).innerHTML=v+`<span class="mu">${u}</span>`;}
+
+function saveSession(bat,E,P,src){
+  S.hist.unshift({date:new Date().toLocaleDateString('fr-FR'),h:new Date().toLocaleTimeString('fr-FR'),E:E.toFixed(3),bat,src,P:src===1?'0.00':P.toFixed(2)});
+  if(S.hist.length>20)S.hist.pop();
+  localStorage.setItem('bs_hist',JSON.stringify(S.hist));affHist();
+}
+
+function affHist(){
+  const tb=document.getElementById('hbody');
+  if(!S.hist.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--gris);padding:2rem">Aucune recharge enregistrée</td></tr>';return;}
+  tb.innerHTML=S.hist.map(s=>`<tr><td>${s.date} ${s.h}</td><td>${s.E} kWh</td><td>${s.bat}%</td><td><span class="bs ${s.src===1?'s':'r'}">${s.src===1?'☀️ Solaire':'⚡ Réseau'}</span></td><td style="color:${s.src===1?'#FFD700':'var(--vert)'};">${s.src===1?'Gratuit':s.P+' MAD'}</td></tr>`).join('');
+}
+
+function sendWA(bat,E,P,src){
+  if(!S.tel)return;
+  const pt=src===1?'GRATUIT (Solaire)':P.toFixed(2)+' MAD';
+  const msg=encodeURIComponent(`✅ BorneSmart — Recharge terminée !\n🔋 Batterie : ${bat}%\n⚡ Énergie : ${E.toFixed(3)} kWh\n💴 Prix : ${pt}\nVous pouvez récupérer votre véhicule.`);
+  fetch(`https://api.callmebot.com/whatsapp.php?phone=${S.tel.replace(/\D/g,'')}&text=${msg}&apikey=`).catch(()=>{});
+  const nl=document.getElementById('nlist');
+  if(nl.querySelector('.no-n'))nl.innerHTML='';
+  const el=document.createElement('div');el.className='ni';
+  el.innerHTML=`<div class="ni-ic">📱</div><div class="ni-b"><div class="ni-t">Message envoyé — ${S.tel}</div><div class="ni-x">🔋 ${bat}% · ⚡ ${E.toFixed(3)} kWh · 💴 ${pt}</div></div><div class="ni-tm">${new Date().toLocaleTimeString('fr-FR')}</div>`;
+  nl.prepend(el);toast('📱 Notification WhatsApp envoyée !','success');
+}
+
+function sendWA_surchauffe(T){
+  if(!S.tel||S._waSurchauffeEnvoye)return;
+  S._waSurchauffeEnvoye=true;
+  setTimeout(()=>{S._waSurchauffeEnvoye=false;},60000); // re-envoyer max 1 fois/min
+  const msg=encodeURIComponent(`⚠️ BorneSmart — ALERTE SURCHAUFFE !\n🌡️ Température : ${T.toFixed(1)}°C\nLa charge a été coupée automatiquement par sécurité.\nVérifiez votre installation.`);
+  fetch(`https://api.callmebot.com/whatsapp.php?phone=${S.tel.replace(/\D/g,'')}&text=${msg}&apikey=`).catch(()=>{});
+  toast('⚠️ Alerte surchauffe envoyée sur WhatsApp !','error');
+}
+
+function modifier(){document.getElementById('page-app').classList.remove('active');document.getElementById('page-accueil').classList.add('active');if(S.mc)S.mc.end();}
+function quitter(){if(S.mc)S.mc.end();document.getElementById('page-app').classList.remove('active');document.getElementById('page-accueil').classList.add('active');}
+
+function initChart(){S.cd=new Array(30).fill(0);drawChart();}
+function drawChart(){
+  const c=document.getElementById('chart');if(!c)return;
+  const W=c.offsetWidth||600,H=110;c.width=W;c.height=H;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,W,H);
+  const mx=Math.max(...S.cd,1),sx=W/29;
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(0,(i/4)*H);ctx.lineTo(W,(i/4)*H);ctx.stroke();}
+  const gr=ctx.createLinearGradient(0,0,0,H);gr.addColorStop(0,'rgba(0,229,160,.25)');gr.addColorStop(1,'rgba(0,229,160,0)');
+  ctx.beginPath();S.cd.forEach((v,i)=>{const x=i*sx,y=H-(v/mx)*(H-12)-6;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo(29*sx,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=gr;ctx.fill();
+  ctx.beginPath();S.cd.forEach((v,i)=>{const x=i*sx,y=H-(v/mx)*(H-12)-6;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.strokeStyle='#00E5A0';ctx.lineWidth=2;ctx.stroke();
+}
+
+function demo(){
+  toast('Mode démonstration activé','success');let t=0;
+  setInterval(()=>{t++;const bat=Math.min(20+Math.floor(t/2),100),I=bat<100?+(0.7+Math.random()*.5).toFixed(2):0,et=bat>=100?4:t<2?0:3,E=+(I*12/1000*t/3600).toFixed(4),P=+(E*1.5).toFixed(3);
+  maj({bat,courant:I,temp:+(28+Math.random()*6).toFixed(1),energie:E,prix:P,etat:et,source:0});},2000);
+}
+
+function showSec(n,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('section-'+n).classList.add('active');
+  if(btn)btn.classList.add('active');
+}
+
+function toast(msg,type='success'){
+  document.getElementById('tmsg').textContent=msg;
+  document.getElementById('tic').textContent=type==='success'?'✓':'✕';
+  const t=document.getElementById('toast');t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+window.addEventListener('resize',drawChart);
+</script>
+</body>
+</html>
